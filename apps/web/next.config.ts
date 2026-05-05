@@ -27,8 +27,10 @@ const withPWA = require('next-pwa')({
 })
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  output: 'export',
+  trailingSlash: true,
   images: {
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'static.inaturalist.org' },
       { protocol: 'https', hostname: '*.ebird.org' },
