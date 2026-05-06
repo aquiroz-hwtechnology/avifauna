@@ -18,7 +18,9 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  '35542658251-k11tmquogc7aml81c0gpvctj20bqm087.apps.googleusercontent.com'
 
 export default function GoogleSignInButton() {
   const buttonRef = useRef<HTMLDivElement>(null)
