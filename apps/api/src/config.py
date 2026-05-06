@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     EBIRD_API_KEY: str = ""
     EBIRD_API_URL: str = "https://api.ebird.org/v2"
 
+    # Auth
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 1440
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 

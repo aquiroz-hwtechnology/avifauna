@@ -5,7 +5,8 @@ from sqlalchemy import select
 
 from src.database import get_db
 from src.models import SightingIn, SightingSyncRequest
-from src.orm_models import Sighting, Species
+from src.orm_models import Sighting, Species, User
+from src.auth import get_current_user
 
 router = APIRouter()
 
@@ -29,7 +30,11 @@ async def get_or_create_species(db: AsyncSession, sighting_in: SightingIn) -> Sp
 
 
 @router.post("/sync")
-async def sync_sightings(body: SightingSyncRequest, db: AsyncSession = Depends(get_db)):
+async def sync_sightings(
+    body: SightingSyncRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     synced = 0
     failed = 0
 
@@ -44,6 +49,7 @@ async def sync_sightings(body: SightingSyncRequest, db: AsyncSession = Depends(g
 
             sighting = Sighting(
                 local_id=s.localId if hasattr(s, "localId") else None,
+                user_id=current_user.id,
                 species_id=species.id if species else None,
                 latitude=s.lat or 0.0,
                 longitude=s.lng or 0.0,

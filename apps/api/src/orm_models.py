@@ -11,6 +11,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False, default="")
+    password_hash = Column(String(255), nullable=False, default="")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     sightings = relationship("Sighting", back_populates="user")
