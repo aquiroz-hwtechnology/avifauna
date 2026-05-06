@@ -34,12 +34,19 @@ export interface Sighting {
   id?: number
   speciesId: string
   speciesName: string
+  scientificName?: string
   confidence: number
   date: string
   lat: number | null
   lng: number | null
   photoUrl: string | null
   synced: boolean
+  kingdom?: string
+  phylum?: string
+  clase?: string
+  order?: string
+  family?: string
+  genus?: string
 }
 
 export interface GeoCoords {

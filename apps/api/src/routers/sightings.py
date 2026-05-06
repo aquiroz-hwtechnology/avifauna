@@ -24,8 +24,14 @@ async def get_or_create_species(db: AsyncSession, sighting_in: SightingIn) -> Sp
     if species is None:
         species = Species(
             common_name=sighting_in.speciesName,
-            scientific_name=sighting_in.speciesName,
+            scientific_name=sighting_in.scientificName or sighting_in.speciesName,
             inaturalist_id=int(sighting_in.speciesId),
+            kingdom=sighting_in.kingdom or "Animalia",
+            phylum=sighting_in.phylum or "Chordata",
+            class_=sighting_in.clase or "",
+            order=sighting_in.order or "",
+            family=sighting_in.family or "",
+            genus=sighting_in.genus or "",
         )
         db.add(species)
         await db.flush()
@@ -119,14 +125,21 @@ async def export_sightings_csv(
     buf.write("﻿")
     writer = csv.writer(buf)
     writer.writerow([
-        "Especie", "Nombre científico", "Fecha", "Hora",
-        "Latitud", "Longitud", "URL Foto", "Notas",
+        "Especie", "Nombre científico",
+        "Reino", "Filo", "Clase", "Orden", "Familia", "Género",
+        "Fecha", "Hora", "Latitud", "Longitud", "URL Foto", "Notas",
     ])
     for s, sp in rows:
         d = s.observed_at
         writer.writerow([
             sp.common_name if sp else "",
             sp.scientific_name if sp else "",
+            sp.kingdom if sp else "",
+            sp.phylum if sp else "",
+            sp.class_ if sp else "",
+            sp.order if sp else "",
+            sp.family if sp else "",
+            sp.genus if sp else "",
             d.strftime("%Y-%m-%d") if d else "",
             d.strftime("%H:%M") if d else "",
             s.latitude or "",

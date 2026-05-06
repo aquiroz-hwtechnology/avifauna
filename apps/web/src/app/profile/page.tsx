@@ -28,11 +28,18 @@ export default function ProfilePage() {
         localId: String(s.id),
         speciesId: s.speciesId,
         speciesName: s.speciesName,
+        scientificName: s.scientificName,
         confidence: s.confidence,
         date: s.date,
         lat: s.lat,
         lng: s.lng,
         photoUrl: s.photoUrl,
+        kingdom: s.kingdom,
+        phylum: s.phylum,
+        clase: s.clase,
+        order: s.order,
+        family: s.family,
+        genus: s.genus,
       }))
       const result = await syncSightings(payload)
       for (const s of unsynced) {

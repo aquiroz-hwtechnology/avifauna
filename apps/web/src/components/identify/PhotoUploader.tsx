@@ -32,15 +32,23 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
 
       onResult(identification)
 
+      const tax = identification.taxonomy
       await db.sightings.add({
         speciesId: identification.species.id,
         speciesName: identification.species.commonName,
+        scientificName: identification.species.scientificName,
         confidence: identification.confidence,
         date: new Date().toISOString(),
         lat: coords.status === 'fulfilled' ? coords.value.lat : null,
         lng: coords.status === 'fulfilled' ? coords.value.lng : null,
         photoUrl: identification.photoUrl || null,
         synced: false,
+        kingdom: tax?.kingdom,
+        phylum: tax?.phylum,
+        clase: tax?.clase,
+        order: tax?.order,
+        family: tax?.family,
+        genus: tax?.genus,
       })
     } catch (err) {
       if (err instanceof Error && err.message.includes('timeout')) {

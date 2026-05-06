@@ -3,6 +3,13 @@ import type { Sighting } from '@avifauna/types'
 export function exportSightingsCsv(sightings: Sighting[]) {
   const headers = [
     'Especie',
+    'Nombre científico',
+    'Reino',
+    'Filo',
+    'Clase',
+    'Orden',
+    'Familia',
+    'Género',
     'Confianza (%)',
     'Fecha',
     'Hora',
@@ -16,6 +23,13 @@ export function exportSightingsCsv(sightings: Sighting[]) {
     const d = new Date(s.date)
     return [
       s.speciesName,
+      s.scientificName ?? '',
+      s.kingdom ?? '',
+      s.phylum ?? '',
+      s.clase ?? '',
+      s.order ?? '',
+      s.family ?? '',
+      s.genus ?? '',
       s.confidence ? Math.round(s.confidence * 100) : '',
       d.toLocaleDateString('es-CO'),
       d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),

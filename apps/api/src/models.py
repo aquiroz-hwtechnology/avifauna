@@ -33,11 +33,18 @@ class SightingIn(BaseModel):
     localId: str | None = None
     speciesId: str | None = None
     speciesName: str = ""
+    scientificName: str | None = None
     confidence: float = 0.0
     date: str
     lat: float | None = None
     lng: float | None = None
     photoUrl: str | None = None
+    kingdom: str | None = None
+    phylum: str | None = None
+    clase: str | None = None
+    order: str | None = None
+    family: str | None = None
+    genus: str | None = None
 
 
 class SightingSyncRequest(BaseModel):
