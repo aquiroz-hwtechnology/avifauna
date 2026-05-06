@@ -64,6 +64,7 @@ async def sync_sightings(
                 longitude=s.lng or 0.0,
                 observed_at=observed_at,
                 photo_url=s.photoUrl,
+                local_name=s.localName,
                 synced=True,
             )
             db.add(sighting)

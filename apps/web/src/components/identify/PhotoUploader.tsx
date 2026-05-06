@@ -3,11 +3,15 @@
 import { useRef, useState } from 'react'
 import { identifyBird } from '@/lib/api'
 import { getCurrentPosition } from '@/lib/geolocation'
-import { db } from '@/lib/db'
-import type { IdentificationResult } from '@avifauna/types'
+import type { IdentificationResult, GeoCoords } from '@avifauna/types'
+
+interface IdentifyData {
+  result: IdentificationResult
+  coords: GeoCoords | null
+}
 
 interface Props {
-  onResult: (result: IdentificationResult) => void
+  onResult: (data: IdentifyData) => void
   onLoading: (loading: boolean) => void
 }
 
@@ -30,26 +34,9 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
       const identification = result.status === 'fulfilled' ? result.value : null
       if (!identification) throw new Error('No se pudo identificar la especie')
 
-      onResult(identification)
+      const geoCoords = coords.status === 'fulfilled' ? coords.value : null
 
-      const tax = identification.taxonomy
-      await db.sightings.add({
-        speciesId: identification.species.id,
-        speciesName: identification.species.commonName,
-        scientificName: identification.species.scientificName,
-        confidence: identification.confidence,
-        date: new Date().toISOString(),
-        lat: coords.status === 'fulfilled' ? coords.value.lat : null,
-        lng: coords.status === 'fulfilled' ? coords.value.lng : null,
-        photoUrl: identification.photoUrl || null,
-        synced: false,
-        kingdom: tax?.kingdom,
-        phylum: tax?.phylum,
-        clase: tax?.clase,
-        order: tax?.order,
-        family: tax?.family,
-        genus: tax?.genus,
-      })
+      onResult({ result: identification, coords: geoCoords })
     } catch (err) {
       if (err instanceof Error && err.message.includes('timeout')) {
         setError('La conexión tardó demasiado. Intenta de nuevo.')
@@ -59,6 +46,12 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
     } finally {
       onLoading(false)
     }
+  }
+
+  function reset() {
+    setPreview(null)
+    setError(null)
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   return (
@@ -90,7 +83,12 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        onChange={(e) => {
+          if (e.target.files?.[0]) {
+            reset()
+            handleFile(e.target.files[0])
+          }
+        }}
       />
 
       {error && (

@@ -35,6 +35,7 @@ export interface Sighting {
   speciesId: string
   speciesName: string
   scientificName?: string
+  localName?: string
   confidence: number
   date: string
   lat: number | null

@@ -49,6 +49,7 @@ class Sighting(Base):
     longitude = Column(Float, nullable=False)
     observed_at = Column(DateTime(timezone=True), nullable=False)
     photo_url = Column(String(500), nullable=True)
+    local_name = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     synced = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

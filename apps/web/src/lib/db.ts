@@ -12,6 +12,9 @@ class AvifaunaDB extends Dexie {
     this.version(2).stores({
       sightings: '++id, speciesId, date, synced',
     })
+    this.version(3).stores({
+      sightings: '++id, speciesId, date, synced',
+    })
   }
 }
 

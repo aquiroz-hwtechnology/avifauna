@@ -34,6 +34,7 @@ class SightingIn(BaseModel):
     speciesId: str | None = None
     speciesName: str = ""
     scientificName: str | None = None
+    localName: str | None = None
     confidence: float = 0.0
     date: str
     lat: float | None = None

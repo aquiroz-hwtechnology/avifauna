@@ -33,6 +33,7 @@ export function useAutoSync() {
           order: s.order,
           family: s.family,
           genus: s.genus,
+          localName: s.localName,
         }))
         await syncSightings(payload)
         for (const s of unsynced) {
