@@ -43,7 +43,11 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
         synced: false,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      if (err instanceof Error && err.message.includes('timeout')) {
+        setError('La conexión tardó demasiado. Intenta de nuevo.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al identificar la especie')
+      }
     } finally {
       onLoading(false)
     }
