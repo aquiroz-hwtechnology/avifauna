@@ -7,6 +7,16 @@ import { getSightingStats } from '@/lib/api'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 
+interface RecentRecord {
+  species_name: string | null
+  family: string | null
+  order: string | null
+  observed_at: string | null
+  latitude: number
+  longitude: number
+  photo_url: string | null
+}
+
 interface Stats {
   total: number
   species_count: number
@@ -15,39 +25,53 @@ interface Stats {
   by_family: { name: string; count: number }[]
   by_order: { name: string; count: number }[]
   by_month: { month: string; count: number }[]
-  recent: {
-    species_name: string | null
-    observed_at: string | null
-    latitude: number
-    longitude: number
-    photo_url: string | null
-  }[]
+  recent: RecentRecord[]
 }
 
 type TabKey = 'species' | 'family' | 'order'
 
 const COLORS = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#be185d', '#65a30d', '#ea580c', '#6366f1']
 
-function BarChart({ data, maxCount }: { data: { name: string; count: number }[]; maxCount: number }) {
+function BarChart({
+  data,
+  maxCount,
+  selectedName,
+  onSelect,
+}: {
+  data: { name: string; count: number }[]
+  maxCount: number
+  selectedName: string | null
+  onSelect: (name: string | null) => void
+}) {
   return (
     <div className="space-y-2">
-      {data.map((item, i) => (
-        <div key={item.name} className="flex items-center gap-3">
-          <div className="w-28 text-xs text-gray-600 truncate text-right flex-shrink-0" title={item.name}>
-            {item.name}
-          </div>
-          <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.max((item.count / maxCount) * 100, 4)}%`,
-                backgroundColor: COLORS[i % COLORS.length],
-              }}
-            />
-          </div>
-          <span className="text-xs font-semibold text-gray-700 w-6 text-right">{item.count}</span>
-        </div>
-      ))}
+      {data.map((item, i) => {
+        const isSelected = selectedName === item.name
+        const isDimmed = selectedName !== null && !isSelected
+        return (
+          <button
+            key={item.name}
+            onClick={() => onSelect(isSelected ? null : item.name)}
+            className={`flex items-center gap-3 w-full text-left rounded-lg px-1 py-0.5 transition-all duration-200 ${
+              isSelected ? 'bg-primary-50 ring-2 ring-primary-300' : isDimmed ? 'opacity-40' : 'hover:bg-gray-50'
+            }`}
+          >
+            <div className="w-28 text-xs text-gray-600 truncate text-right flex-shrink-0" title={item.name}>
+              {item.name}
+            </div>
+            <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.max((item.count / maxCount) * 100, 4)}%`,
+                  backgroundColor: COLORS[i % COLORS.length],
+                }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-gray-700 w-6 text-right">{item.count}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -78,6 +102,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('species')
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null)
 
   const localSightings = useLiveQuery(() => db.sightings.toArray())
   const localTotal = localSightings?.length ?? 0
@@ -93,6 +118,10 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user])
+
+  useEffect(() => {
+    setSelectedFilter(null)
+  }, [tab])
 
   if (authLoading || loading) {
     return (
@@ -116,8 +145,20 @@ export default function DashboardPage() {
 
   const maxCount = Math.max(...tabData.map((d) => d.count), 1)
 
+  const filteredRecent = stats
+    ? selectedFilter
+      ? stats.recent.filter((r) => {
+          if (tab === 'species') return r.species_name === selectedFilter
+          if (tab === 'family') return r.family === selectedFilter
+          return r.order === selectedFilter
+        })
+      : stats.recent
+    : []
+
+  const displayRecent = filteredRecent.slice(0, 20)
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-24">
       <div className="bg-gradient-hero text-white px-6 pt-12 pb-8 rounded-b-[2.5rem]">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -152,6 +193,14 @@ export default function DashboardPage() {
           <div className="card">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-800 text-sm">Distribución taxonómica</h3>
+              {selectedFilter && (
+                <button
+                  onClick={() => setSelectedFilter(null)}
+                  className="text-[10px] text-primary-600 font-medium hover:underline"
+                >
+                  Limpiar filtro
+                </button>
+              )}
             </div>
             <div className="flex gap-1.5 mb-4">
               {(['species', 'family', 'order'] as TabKey[]).map((t) => (
@@ -168,22 +217,32 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
-            <BarChart data={tabData} maxCount={maxCount} />
+            <BarChart
+              data={tabData}
+              maxCount={maxCount}
+              selectedName={selectedFilter}
+              onSelect={setSelectedFilter}
+            />
           </div>
         )}
 
-        {stats && stats.recent.length > 0 && (
+        {stats && displayRecent.length > 0 && (
           <div className="card">
-            <h3 className="font-semibold text-gray-800 mb-3 text-sm">Registros recientes</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-800 text-sm">
+                {selectedFilter ? `Registros: ${selectedFilter}` : 'Registros recientes'}
+              </h3>
+              <span className="text-[10px] text-gray-400">{filteredRecent.length} registros</span>
+            </div>
             <div className="space-y-3">
-              {stats.recent.map((r, i) => (
+              {displayRecent.map((r, i) => (
                 <div key={i} className="flex items-center gap-3">
                   {r.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0 text-sm">
-                      🦎
+                      🐦
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -198,13 +257,25 @@ export default function DashboardPage() {
                     )}
                   </div>
                   {r.latitude !== 0 && r.longitude !== 0 && (
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      📍
-                    </span>
+                    <Link
+                      href={`/map?lat=${r.latitude}&lng=${r.longitude}&zoom=15`}
+                      className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0 hover:bg-red-100 transition-colors"
+                      title="Ver en mapa"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-red-500">
+                        <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                      </svg>
+                    </Link>
                   )}
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {stats && selectedFilter && filteredRecent.length === 0 && (
+          <div className="card text-center py-6">
+            <p className="text-sm text-gray-500">No hay registros para "{selectedFilter}"</p>
           </div>
         )}
 

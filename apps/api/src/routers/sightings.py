@@ -235,11 +235,13 @@ async def sighting_stats(
         .outerjoin(Species, Sighting.species_id == Species.id)
         .where(Sighting.user_id == current_user.id)
         .order_by(Sighting.observed_at.desc())
-        .limit(5)
+        .limit(100)
     )
     recent = [
         {
             "species_name": sp.common_name if sp else None,
+            "family": sp.family if sp else None,
+            "order": sp.order if sp else None,
             "observed_at": s.observed_at.isoformat() if s.observed_at else None,
             "latitude": s.latitude,
             "longitude": s.longitude,

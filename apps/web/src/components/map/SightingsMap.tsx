@@ -61,18 +61,22 @@ interface RemoteSighting {
   photo_url: string | null
 }
 
-function FitBounds({ points }: { points: [number, number][] }) {
+function FitBounds({ points, focusLat, focusLng, focusZoom }: { points: [number, number][]; focusLat?: number; focusLng?: number; focusZoom?: number }) {
   const map = useMap()
   useEffect(() => {
+    if (focusLat !== undefined && focusLng !== undefined) {
+      map.setView([focusLat, focusLng], focusZoom ?? 15)
+      return
+    }
     if (points.length > 0) {
       const bounds = L.latLngBounds(points.map(([lat, lng]) => [lat, lng]))
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
     }
-  }, [map, points])
+  }, [map, points, focusLat, focusLng, focusZoom])
   return null
 }
 
-export default function SightingsMap() {
+export default function SightingsMap({ focusLat, focusLng, focusZoom }: { focusLat?: number; focusLng?: number; focusZoom?: number } = {}) {
   const { user } = useAuth()
   const localSightings = useLiveQuery(() => db.sightings.toArray())
   const [remoteSightings, setRemoteSightings] = useState<RemoteSighting[]>([])
@@ -107,7 +111,9 @@ export default function SightingsMap() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {allPoints.length > 1 && <FitBounds points={allPoints} />}
+        {(allPoints.length > 1 || focusLat !== undefined) && (
+          <FitBounds points={allPoints} focusLat={focusLat} focusLng={focusLng} focusZoom={focusZoom} />
+        )}
 
         {localWithCoords.map((s) => (
           <Marker

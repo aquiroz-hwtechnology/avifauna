@@ -1,5 +1,7 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 
 const SightingsMap = dynamic(() => import('@/components/map/SightingsMap'), {
@@ -14,7 +16,12 @@ const SightingsMap = dynamic(() => import('@/components/map/SightingsMap'), {
   ),
 })
 
-export default function MapPage() {
+function MapContent() {
+  const searchParams = useSearchParams()
+  const focusLat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : undefined
+  const focusLng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : undefined
+  const focusZoom = searchParams.get('zoom') ? parseInt(searchParams.get('zoom')!) : undefined
+
   return (
     <div className="h-screen flex flex-col">
       <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
@@ -23,8 +30,16 @@ export default function MapPage() {
         </div>
       </div>
       <div className="flex-1">
-        <SightingsMap />
+        <SightingsMap focusLat={focusLat} focusLng={focusLng} focusZoom={focusZoom} />
       </div>
     </div>
+  )
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center"><div className="animate-pulse text-gray-400">Cargando mapa...</div></div>}>
+      <MapContent />
+    </Suspense>
   )
 }
