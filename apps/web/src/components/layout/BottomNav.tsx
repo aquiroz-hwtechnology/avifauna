@@ -57,21 +57,30 @@ const navItems = [
 export default function BottomNav() {
   const pathname = usePathname()
 
-  if (pathname === '/login' || pathname === '/register') return null
+  const hideNav = ['/login', '/register', '/reset-password'].includes(pathname)
+  if (hideNav) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-gray-100">
-      <div className="max-w-lg mx-auto flex justify-around py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+      <div className="max-w-lg mx-auto flex justify-around py-1.5 px-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-item ${isActive ? 'nav-item-active' : 'hover:text-gray-600'}`}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 min-w-[56px] ${
+                isActive
+                  ? 'text-primary-600 bg-primary-50'
+                  : 'text-gray-500 hover:text-primary-600 active:bg-gray-50'
+              }`}
             >
-              {item.icon}
-              <span className="text-xs font-medium">{item.label}</span>
+              <div className={isActive ? 'scale-110 transition-transform' : 'transition-transform'}>
+                {item.icon}
+              </div>
+              <span className={`text-[10px] font-semibold ${isActive ? 'text-primary-600' : 'text-gray-500'}`}>
+                {item.label}
+              </span>
             </Link>
           )
         })}

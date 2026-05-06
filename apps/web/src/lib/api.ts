@@ -62,6 +62,19 @@ export async function searchSpecies(query: string) {
   return data
 }
 
+export async function resetPassword(email: string, newPassword: string) {
+  const { data } = await apiClient.post('/auth/reset-password', { email, new_password: newPassword })
+  return data
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await apiClient.post('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+  return data
+}
+
 export async function getSightings(skip = 0, limit = 100) {
   const { data } = await apiClient.get('/sightings', { params: { skip, limit } })
   return data
