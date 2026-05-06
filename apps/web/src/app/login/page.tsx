@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { loginUser } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -72,6 +73,14 @@ export default function LoginPage() {
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
             {loading ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
+
+          <div className="relative flex items-center my-2">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="px-3 text-xs text-gray-400">o</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          <GoogleSignInButton />
 
           <div className="text-center space-y-2">
             <Link href="/reset-password" className="text-sm text-primary-600 font-medium hover:underline block">

@@ -3,9 +3,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from src.database import get_db
 from src.orm_models import User
+from src.config import settings
 from src.auth import hash_password, verify_password, create_token, get_current_user
 
 router = APIRouter()
@@ -58,6 +61,38 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
 
     if not user or not verify_password(form.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+    token = create_token(user.id, user.email)
+    return AuthResponse(
+        access_token=token,
+        user={"id": user.id, "name": user.name, "email": user.email},
+    )
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_login(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            body.credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Token de Google inválido")
+
+    email = idinfo["email"]
+    name = idinfo.get("name", email.split("@")[0])
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(name=name, email=email, password_hash="__google_oauth__")
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
 
     token = create_token(user.id, user.email)
     return AuthResponse(

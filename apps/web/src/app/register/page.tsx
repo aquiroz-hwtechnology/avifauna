@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { registerUser } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -22,7 +23,7 @@ export default function RegisterPage() {
     try {
       const data = await registerUser(name, email, password)
       login(data.access_token, data.user)
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       setError('No se pudo crear la cuenta. El correo puede estar en uso.')
     } finally {
@@ -86,6 +87,14 @@ export default function RegisterPage() {
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
             {loading ? 'Creando cuenta...' : 'Registrarse'}
           </button>
+
+          <div className="relative flex items-center my-2">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="px-3 text-xs text-gray-400">o</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          <GoogleSignInButton />
 
           <p className="text-center text-sm text-gray-500">
             ¿Ya tienes cuenta?{' '}

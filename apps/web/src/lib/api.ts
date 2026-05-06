@@ -44,6 +44,11 @@ export async function loginUser(email: string, password: string) {
   return data
 }
 
+export async function googleLogin(credential: string) {
+  const { data } = await apiClient.post('/auth/google', { credential })
+  return data
+}
+
 export async function getMe() {
   const { data } = await apiClient.get('/auth/me')
   return data
