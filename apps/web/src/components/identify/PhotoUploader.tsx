@@ -28,7 +28,7 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
       ])
 
       const identification = result.status === 'fulfilled' ? result.value : null
-      if (!identification) throw new Error('No se pudo identificar el ave')
+      if (!identification) throw new Error('No se pudo identificar la especie')
 
       onResult(identification)
 
@@ -53,16 +53,21 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
     <div className="space-y-4">
       <div
         onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-primary-300 rounded-2xl p-8 text-center cursor-pointer hover:bg-primary-50 transition-colors"
+        className="card cursor-pointer hover:shadow-card-hover group overflow-hidden"
       >
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Vista previa" className="max-h-64 mx-auto rounded-xl object-contain" />
+          <img src={preview} alt="Vista previa" className="max-h-72 mx-auto rounded-xl object-contain" />
         ) : (
-          <div className="space-y-2 text-gray-400">
-            <div className="text-4xl">📸</div>
-            <p className="font-medium">Toca para subir una foto</p>
-            <p className="text-sm">JPG, PNG o WEBP</p>
+          <div className="py-12 text-center">
+            <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-primary-500">
+                <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
+                <path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3H4.5a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="font-semibold text-gray-700">Toca para subir una foto</p>
+            <p className="text-sm text-gray-400 mt-1">JPG, PNG o usa la cámara</p>
           </div>
         )}
       </div>
@@ -77,7 +82,7 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
       />
 
       {error && (
-        <p className="text-red-500 text-sm text-center">{error}</p>
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{error}</div>
       )}
     </div>
   )

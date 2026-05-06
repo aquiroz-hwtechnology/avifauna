@@ -9,29 +9,46 @@ export default function SightingsPage() {
   const sightings = useLiveQuery(() => db.sightings.orderBy('date').reverse().toArray())
 
   return (
-    <div className="min-h-screen p-4 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-primary-700">Mis Avistamientos</h1>
-        <Link
-          href="/identify"
-          className="bg-primary-600 text-white text-sm font-semibold py-2 px-4 rounded-lg"
-        >
-          + Nuevo
-        </Link>
+    <div className="min-h-screen">
+      <div className="bg-gradient-hero text-white px-6 pt-12 pb-8 rounded-b-[2.5rem]">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Mis Registros</h1>
+            <p className="text-primary-200 text-sm mt-1">
+              {sightings ? `${sightings.length} avistamiento${sightings.length !== 1 ? 's' : ''}` : 'Cargando...'}
+            </p>
+          </div>
+          <Link
+            href="/identify"
+            className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
+            </svg>
+          </Link>
+        </div>
       </div>
 
-      {!sightings || sightings.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <div className="text-5xl mb-4">🔭</div>
-          <p>Aún no tienes avistamientos registrados.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {sightings.map((s) => (
-            <SightingCard key={s.id} sighting={s} />
-          ))}
-        </div>
-      )}
+      <div className="px-6 mt-4 max-w-lg mx-auto">
+        {!sightings || sightings.length === 0 ? (
+          <div className="text-center py-16 animate-fade-in">
+            <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🔭</span>
+            </div>
+            <h3 className="font-semibold text-gray-700 mb-1">Sin registros aún</h3>
+            <p className="text-sm text-gray-400 mb-6">Identifica tu primera especie para comenzar</p>
+            <Link href="/identify" className="btn-primary inline-block">
+              Identificar Especie
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3 animate-fade-in">
+            {sightings.map((s) => (
+              <SightingCard key={s.id} sighting={s} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
