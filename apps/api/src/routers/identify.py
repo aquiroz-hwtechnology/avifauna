@@ -1,29 +1,36 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 import httpx
+import io
+from PIL import Image
 from src.config import settings
 from src.models import IdentificationResult, Species, Taxonomy
 
 router = APIRouter()
 
-
-async def query_inaturalist(image_bytes: bytes) -> dict:
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            f"{settings.INATURALIST_API_URL}/computervision/score_image",
-            files={"image": ("photo.jpg", image_bytes, "image/jpeg")},
-        )
-        response.raise_for_status()
-        return response.json()
+MAX_SIZE = (1024, 1024)
 
 
-def parse_inaturalist_result(data: dict) -> IdentificationResult:
-    results = data.get("results", [])
-    if not results:
-        raise HTTPException(status_code(404), detail="No se identificó ningún ave")
+def compress_image(image_bytes: bytes) -> bytes:
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img.thumbnail(MAX_SIZE, Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
 
-    top = results[0]
-    taxon = top.get("taxon", {})
-    ancestors = taxon.get("ancestors", [])
+
+async def fetch_taxon_details(client: httpx.AsyncClient, taxon_id: int) -> dict:
+    response = await client.get(
+        f"{settings.INATURALIST_API_URL}/taxa/{taxon_id}",
+    )
+    if response.status_code == 200:
+        results = response.json().get("results", [])
+        if results:
+            return results[0]
+    return {}
+
+
+def extract_taxonomy(taxon_detail: dict) -> Taxonomy:
+    ancestors = taxon_detail.get("ancestors", [])
 
     def find_rank(rank: str) -> str:
         for a in ancestors:
@@ -31,12 +38,54 @@ def parse_inaturalist_result(data: dict) -> IdentificationResult:
                 return a.get("name", "")
         return ""
 
-    taxonomy = Taxonomy(
+    return Taxonomy(
         order=find_rank("order"),
         family=find_rank("family"),
         genus=find_rank("genus"),
-        species=taxon.get("name", ""),
+        species=taxon_detail.get("name", ""),
     )
+
+
+async def query_inaturalist(image_bytes: bytes) -> dict:
+    compressed = compress_image(image_bytes)
+    headers = {}
+    if settings.INATURALIST_API_TOKEN:
+        headers["Authorization"] = settings.INATURALIST_API_TOKEN
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            f"{settings.INATURALIST_API_URL}/computervision/score_image",
+            files={"image": ("photo.jpg", compressed, "image/jpeg")},
+            headers=headers,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        results = data.get("results", [])
+        if not results:
+            return data
+
+        top_taxon_id = results[0].get("taxon", {}).get("id")
+        if top_taxon_id:
+            taxon_detail = await fetch_taxon_details(client, top_taxon_id)
+            if taxon_detail:
+                data["_taxon_detail"] = taxon_detail
+
+        return data
+
+
+def parse_inaturalist_result(data: dict) -> IdentificationResult:
+    results = data.get("results", [])
+    if not results:
+        raise HTTPException(status_code=404, detail="No se identificó ningún ave")
+
+    top = results[0]
+    taxon = top.get("taxon", {})
+
+    taxon_detail = data.get("_taxon_detail", {})
+    if taxon_detail:
+        taxonomy = extract_taxonomy(taxon_detail)
+    else:
+        taxonomy = Taxonomy(species=taxon.get("name", ""))
 
     species = Species(
         id=str(taxon.get("id", "")),

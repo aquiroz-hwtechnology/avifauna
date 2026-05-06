@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # iNaturalist
     INATURALIST_API_URL: str = "https://api.inaturalist.org/v1"
+    INATURALIST_API_TOKEN: str = ""
 
     # eBird
     EBIRD_API_KEY: str = ""

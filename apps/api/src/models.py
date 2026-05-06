@@ -29,9 +29,10 @@ class IdentificationResult(BaseModel):
 
 
 class SightingIn(BaseModel):
-    speciesId: str
-    speciesName: str
-    confidence: float
+    localId: str | None = None
+    speciesId: str | None = None
+    speciesName: str = ""
+    confidence: float = 0.0
     date: str
     lat: float | None = None
     lng: float | None = None
