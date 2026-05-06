@@ -84,10 +84,8 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
         capture="environment"
         className="hidden"
         onChange={(e) => {
-          if (e.target.files?.[0]) {
-            reset()
-            handleFile(e.target.files[0])
-          }
+          const file = e.target.files?.[0]
+          if (file) handleFile(file)
         }}
       />
 

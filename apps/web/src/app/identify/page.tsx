@@ -23,25 +23,29 @@ export default function IdentifyPage() {
     setSaved(false)
     setLocalName('')
 
-    const { result: identification, coords } = identifyData
-    const tax = identification.taxonomy
-    await db.sightings.add({
-      speciesId: identification.species.id,
-      speciesName: identification.species.commonName,
-      scientificName: identification.species.scientificName,
-      confidence: identification.confidence,
-      date: new Date().toISOString(),
-      lat: coords?.lat ?? null,
-      lng: coords?.lng ?? null,
-      photoUrl: identification.photoUrl || null,
-      synced: false,
-      kingdom: tax?.kingdom,
-      phylum: tax?.phylum,
-      clase: tax?.clase,
-      order: tax?.order,
-      family: tax?.family,
-      genus: tax?.genus,
-    })
+    try {
+      const { result: identification, coords } = identifyData
+      const tax = identification.taxonomy
+      await db.sightings.add({
+        speciesId: identification.species.id,
+        speciesName: identification.species.commonName,
+        scientificName: identification.species.scientificName,
+        confidence: identification.confidence,
+        date: new Date().toISOString(),
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+        photoUrl: identification.photoUrl || null,
+        synced: false,
+        kingdom: tax?.kingdom,
+        phylum: tax?.phylum,
+        clase: tax?.clase,
+        order: tax?.order,
+        family: tax?.family,
+        genus: tax?.genus,
+      })
+    } catch {
+      // DB save failed silently - record still shows in UI
+    }
   }, [])
 
   async function handleSaveLocalName() {
