@@ -1,12 +1,24 @@
 'use client'
 
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/db'
 import SightingCard from '@/components/sightings/SightingCard'
 import Link from 'next/link'
 
+type Filter = 'all' | 'synced' | 'pending'
+
 export default function SightingsPage() {
   const sightings = useLiveQuery(() => db.sightings.orderBy('date').reverse().toArray())
+  const [filter, setFilter] = useState<Filter>('all')
+
+  const filtered = sightings?.filter((s) => {
+    if (filter === 'synced') return s.synced
+    if (filter === 'pending') return !s.synced
+    return true
+  })
+
+  const unsyncedCount = sightings?.filter((s) => !s.synced).length ?? 0
 
   return (
     <div className="min-h-screen">
@@ -16,6 +28,7 @@ export default function SightingsPage() {
             <h1 className="text-2xl font-bold">Mis Registros</h1>
             <p className="text-primary-200 text-sm mt-1">
               {sightings ? `${sightings.length} avistamiento${sightings.length !== 1 ? 's' : ''}` : 'Cargando...'}
+              {unsyncedCount > 0 && ` · ${unsyncedCount} pendiente${unsyncedCount !== 1 ? 's' : ''}`}
             </p>
           </div>
           <Link
@@ -30,6 +43,24 @@ export default function SightingsPage() {
       </div>
 
       <div className="px-6 mt-4 max-w-lg mx-auto">
+        {sightings && sightings.length > 0 && (
+          <div className="flex gap-2 mb-4">
+            {(['all', 'synced', 'pending'] as Filter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                  filter === f
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {f === 'all' ? 'Todos' : f === 'synced' ? 'Sincronizados' : 'Pendientes'}
+              </button>
+            ))}
+          </div>
+        )}
+
         {!sightings || sightings.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -41,9 +72,13 @@ export default function SightingsPage() {
               Identificar Especie
             </Link>
           </div>
+        ) : filtered && filtered.length === 0 ? (
+          <div className="text-center py-12 animate-fade-in">
+            <p className="text-sm text-gray-400">No hay registros con este filtro</p>
+          </div>
         ) : (
           <div className="space-y-3 animate-fade-in">
-            {sightings.map((s) => (
+            {filtered?.map((s) => (
               <SightingCard key={s.id} sighting={s} />
             ))}
           </div>
