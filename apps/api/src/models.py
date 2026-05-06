@@ -25,6 +25,7 @@ class IdentificationResult(BaseModel):
     confidence: float
     taxonomy: Taxonomy
     distribution: str | None = None
+    photoUrl: str | None = None
     alternatives: list[dict] = []
 
 

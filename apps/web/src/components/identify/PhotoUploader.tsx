@@ -39,7 +39,7 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
         date: new Date().toISOString(),
         lat: coords.status === 'fulfilled' ? coords.value.lat : null,
         lng: coords.status === 'fulfilled' ? coords.value.lng : null,
-        photoUrl: preview,
+        photoUrl: identification.photoUrl || null,
         synced: false,
       })
     } catch (err) {

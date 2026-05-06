@@ -1,9 +1,13 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 import httpx
 import io
+import logging
 from PIL import Image
 from src.config import settings
 from src.models import IdentificationResult, Species, Taxonomy
+from src.storage import upload_photo
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -116,5 +120,16 @@ async def identify_bird(image: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
 
     image_bytes = await image.read()
+
+    photo_url: str | None = None
+    if settings.AZURE_STORAGE_CONNECTION_STRING:
+        try:
+            compressed = compress_image(image_bytes)
+            photo_url = await upload_photo(compressed)
+        except Exception as e:
+            logger.warning("Failed to upload photo to blob storage: %s", e)
+
     data = await query_inaturalist(image_bytes)
-    return parse_inaturalist_result(data)
+    result = parse_inaturalist_result(data)
+    result.photoUrl = photo_url
+    return result

@@ -22,6 +22,7 @@ export interface IdentificationResult {
   confidence: number
   taxonomy: Taxonomy
   distribution?: string
+  photoUrl?: string | null
   alternatives: Array<{
     name: string
     scientificName: string
