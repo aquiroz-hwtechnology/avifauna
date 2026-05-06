@@ -1,5 +1,8 @@
+import csv
+import io
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -97,3 +100,47 @@ async def list_sightings(
         }
         for s, sp in rows
     ]
+
+
+@router.get("/export")
+async def export_sightings_csv(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Sighting, Species)
+        .outerjoin(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
+        .order_by(Sighting.observed_at.desc())
+    )
+    rows = result.all()
+
+    buf = io.StringIO()
+    buf.write("﻿")
+    writer = csv.writer(buf)
+    writer.writerow([
+        "Especie", "Nombre científico", "Fecha", "Hora",
+        "Latitud", "Longitud", "URL Foto", "Notas",
+    ])
+    for s, sp in rows:
+        d = s.observed_at
+        writer.writerow([
+            sp.common_name if sp else "",
+            sp.scientific_name if sp else "",
+            d.strftime("%Y-%m-%d") if d else "",
+            d.strftime("%H:%M") if d else "",
+            s.latitude or "",
+            s.longitude or "",
+            s.photo_url or "",
+            s.notes or "",
+        ])
+
+    buf.seek(0)
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return StreamingResponse(
+        buf,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="mi-fauna-registros-{date_str}.csv"'
+        },
+    )
