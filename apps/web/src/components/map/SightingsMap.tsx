@@ -9,31 +9,47 @@ import { useAuth } from '@/lib/auth'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
-const markerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
-  <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#16a34a" stroke="#fff" stroke-width="1.5"/>
-  <circle cx="12" cy="12" r="5" fill="#fff"/>
-</svg>`
+function createPhotoIcon(photoUrl: string, color: string) {
+  return L.divIcon({
+    html: `<div style="
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 3px solid ${color};
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      background: #fff;
+    ">
+      <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;" />
+    </div>
+    <div style="
+      width: 0; height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 10px solid ${color};
+      margin: -2px auto 0;
+    "></div>`,
+    className: '',
+    iconSize: [44, 56],
+    iconAnchor: [22, 56],
+    popupAnchor: [0, -50],
+  })
+}
 
-const markerIcon = L.divIcon({
-  html: markerSvg,
-  className: '',
-  iconSize: [28, 42],
-  iconAnchor: [14, 42],
-  popupAnchor: [0, -36],
-})
+function createDefaultIcon(color: string) {
+  return L.divIcon({
+    html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="32" height="48">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="5" fill="#fff"/>
+    </svg>`,
+    className: '',
+    iconSize: [32, 48],
+    iconAnchor: [16, 48],
+    popupAnchor: [0, -42],
+  })
+}
 
-const remoteMarkerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
-  <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>
-  <circle cx="12" cy="12" r="5" fill="#fff"/>
-</svg>`
-
-const remoteIcon = L.divIcon({
-  html: remoteMarkerSvg,
-  className: '',
-  iconSize: [28, 42],
-  iconAnchor: [14, 42],
-  popupAnchor: [0, -36],
-})
+const defaultLocalIcon = createDefaultIcon('#16a34a')
+const defaultRemoteIcon = createDefaultIcon('#2563eb')
 
 interface RemoteSighting {
   id: number
@@ -42,6 +58,7 @@ interface RemoteSighting {
   latitude: number
   longitude: number
   observed_at: string | null
+  photo_url: string | null
 }
 
 function FitBounds({ points }: { points: [number, number][] }) {
@@ -81,7 +98,6 @@ export default function SightingsMap() {
   ]
 
   const center: [number, number] = allPoints.length > 0 ? allPoints[0] : [7.0, -73.9]
-
   const totalCount = localWithCoords.length + remoteWithCoords.length
 
   return (
@@ -94,9 +110,17 @@ export default function SightingsMap() {
         {allPoints.length > 1 && <FitBounds points={allPoints} />}
 
         {localWithCoords.map((s) => (
-          <Marker key={`local-${s.id}`} position={[s.lat!, s.lng!]} icon={markerIcon}>
+          <Marker
+            key={`local-${s.id}`}
+            position={[s.lat!, s.lng!]}
+            icon={s.photoUrl ? createPhotoIcon(s.photoUrl, '#16a34a') : defaultLocalIcon}
+          >
             <Popup>
-              <div className="text-sm">
+              <div className="text-sm min-w-[160px]">
+                {s.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.photoUrl} alt={s.speciesName} className="w-full h-24 object-cover rounded-lg mb-2" />
+                )}
                 <p className="font-bold text-green-700">{s.speciesName}</p>
                 <p className="text-gray-500 text-xs mt-1">
                   {new Date(s.date).toLocaleDateString('es-CO')}
@@ -110,9 +134,17 @@ export default function SightingsMap() {
         ))}
 
         {remoteWithCoords.map((s) => (
-          <Marker key={`remote-${s.id}`} position={[s.latitude, s.longitude]} icon={remoteIcon}>
+          <Marker
+            key={`remote-${s.id}`}
+            position={[s.latitude, s.longitude]}
+            icon={s.photo_url ? createPhotoIcon(s.photo_url, '#2563eb') : defaultRemoteIcon}
+          >
             <Popup>
-              <div className="text-sm">
+              <div className="text-sm min-w-[160px]">
+                {s.photo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.photo_url} alt={s.species_name || ''} className="w-full h-24 object-cover rounded-lg mb-2" />
+                )}
                 <p className="font-bold text-blue-700">{s.species_name || 'Especie desconocida'}</p>
                 {s.scientific_name && (
                   <p className="text-gray-400 text-xs italic">{s.scientific_name}</p>
@@ -140,12 +172,12 @@ export default function SightingsMap() {
       <div className="absolute bottom-24 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl shadow-md px-3 py-2 text-xs space-y-1">
         <p className="font-semibold text-gray-700">{totalCount} avistamiento{totalCount !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-green-500"></span>
+          <span className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow-sm"></span>
           <span className="text-gray-500">Local ({localWithCoords.length})</span>
         </div>
         {user && (
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+            <span className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></span>
             <span className="text-gray-500">Sincronizado ({remoteWithCoords.length})</span>
           </div>
         )}
