@@ -75,6 +75,11 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return data
 }
 
+export async function getSightingStats() {
+  const { data } = await apiClient.get('/sightings/stats')
+  return data
+}
+
 export async function getSightings(skip = 0, limit = 100) {
   const { data } = await apiClient.get('/sightings', { params: { skip, limit } })
   return data

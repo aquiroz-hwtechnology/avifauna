@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const data = await loginUser(email, password)
       login(data.access_token, data.user)
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       setError('Correo o contraseña incorrectos')
     } finally {

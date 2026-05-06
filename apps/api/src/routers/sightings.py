@@ -1,10 +1,10 @@
 import csv
 import io
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, case, cast, String
 
 from src.database import get_db
 from src.models import SightingIn, SightingSyncRequest
@@ -157,3 +157,104 @@ async def export_sightings_csv(
             "Content-Disposition": f'attachment; filename="mi-fauna-registros-{date_str}.csv"'
         },
     )
+
+
+@router.get("/stats")
+async def sighting_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    base = select(Sighting).where(Sighting.user_id == current_user.id)
+
+    total_res = await db.execute(select(func.count()).select_from(base.subquery()))
+    total = total_res.scalar() or 0
+
+    species_count_res = await db.execute(
+        select(func.count(func.distinct(Sighting.species_id)))
+        .where(Sighting.user_id == current_user.id)
+        .where(Sighting.species_id.is_not(None))
+    )
+    species_count = species_count_res.scalar() or 0
+
+    with_coords_res = await db.execute(
+        select(func.count())
+        .where(Sighting.user_id == current_user.id)
+        .where(Sighting.latitude != 0)
+        .where(Sighting.longitude != 0)
+    )
+    with_coords = with_coords_res.scalar() or 0
+
+    by_species_res = await db.execute(
+        select(Species.common_name, func.count(Sighting.id).label("count"))
+        .join(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
+        .group_by(Species.common_name)
+        .order_by(func.count(Sighting.id).desc())
+        .limit(10)
+    )
+    by_species = [{"name": r[0], "count": r[1]} for r in by_species_res.all()]
+
+    by_family_res = await db.execute(
+        select(Species.family, func.count(Sighting.id).label("count"))
+        .join(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
+        .where(Species.family.is_not(None))
+        .where(Species.family != "")
+        .group_by(Species.family)
+        .order_by(func.count(Sighting.id).desc())
+        .limit(10)
+    )
+    by_family = [{"name": r[0], "count": r[1]} for r in by_family_res.all()]
+
+    by_order_res = await db.execute(
+        select(Species.order, func.count(Sighting.id).label("count"))
+        .join(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
+        .where(Species.order.is_not(None))
+        .where(Species.order != "")
+        .group_by(Species.order)
+        .order_by(func.count(Sighting.id).desc())
+        .limit(10)
+    )
+    by_order = [{"name": r[0], "count": r[1]} for r in by_order_res.all()]
+
+    by_month_res = await db.execute(
+        select(
+            func.to_char(Sighting.observed_at, "YYYY-MM").label("month"),
+            func.count(Sighting.id).label("count"),
+        )
+        .where(Sighting.user_id == current_user.id)
+        .group_by("month")
+        .order_by("month")
+        .limit(12)
+    )
+    by_month = [{"month": r[0], "count": r[1]} for r in by_month_res.all()]
+
+    recent_res = await db.execute(
+        select(Sighting, Species)
+        .outerjoin(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
+        .order_by(Sighting.observed_at.desc())
+        .limit(5)
+    )
+    recent = [
+        {
+            "species_name": sp.common_name if sp else None,
+            "observed_at": s.observed_at.isoformat() if s.observed_at else None,
+            "latitude": s.latitude,
+            "longitude": s.longitude,
+            "photo_url": s.photo_url,
+        }
+        for s, sp in recent_res.all()
+    ]
+
+    return {
+        "total": total,
+        "species_count": species_count,
+        "with_coordinates": with_coords,
+        "by_species": by_species,
+        "by_family": by_family,
+        "by_order": by_order,
+        "by_month": by_month,
+        "recent": recent,
+    }

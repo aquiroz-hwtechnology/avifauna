@@ -42,6 +42,16 @@ export default function Home() {
 
       <div className="px-6 -mt-6 max-w-lg mx-auto space-y-4 animate-slide-up">
         <div className="grid grid-cols-2 gap-4">
+          <Link href="/dashboard" className="card group">
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-amber-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-amber-600">
+                <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-gray-800">Dashboard</h3>
+            <p className="text-xs text-gray-500 mt-1">Estadísticas y resumen</p>
+          </Link>
+
           <Link href="/sightings" className="card group">
             <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-primary-100 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-primary-600">
@@ -52,7 +62,9 @@ export default function Home() {
             <h3 className="font-semibold text-gray-800">Mis Registros</h3>
             <p className="text-xs text-gray-500 mt-1">Historial de avistamientos</p>
           </Link>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
           <Link href="/map" className="card group">
             <div className="w-10 h-10 bg-sky-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-sky-100 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-sky-500">
@@ -61,6 +73,17 @@ export default function Home() {
             </div>
             <h3 className="font-semibold text-gray-800">Mapa</h3>
             <p className="text-xs text-gray-500 mt-1">Explora avistamientos</p>
+          </Link>
+
+          <Link href="/identify" className="card group">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-emerald-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-emerald-600">
+                <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
+                <path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3H4.5a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-gray-800">Identificar</h3>
+            <p className="text-xs text-gray-500 mt-1">Foto a especie</p>
           </Link>
         </div>
 
