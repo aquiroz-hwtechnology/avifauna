@@ -27,8 +27,7 @@ const withPWA = require('next-pwa')({
 })
 
 const nextConfig: NextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  output: 'standalone',
   images: {
     unoptimized: true,
     remotePatterns: [

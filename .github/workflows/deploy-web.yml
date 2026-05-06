@@ -1,4 +1,4 @@
-name: Deploy Web to Azure Static Web Apps
+name: Deploy Web to Azure Container Apps
 
 on:
   workflow_dispatch:
@@ -8,38 +8,44 @@ on:
       - 'apps/web/**'
       - 'packages/types/**'
       - '.github/workflows/deploy-web.yml'
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches: [main]
+
+env:
+  REGISTRY: avifaunacr.azurecr.io
+  IMAGE_NAME: avifauna-web
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
         with:
-          node-version: '20'
-          cache: 'npm'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build web app
-        run: npm run build --workspace=apps/web
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_TELEMETRY_DISABLED: 1
-
-      - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          app_location: apps/web
-          output_location: out
-          skip_app_build: true
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: rg-avifauna
+          containerAppName: avifauna-web
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
