@@ -71,24 +71,29 @@ async def list_sightings(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Sighting)
+        select(Sighting, Species)
+        .outerjoin(Species, Sighting.species_id == Species.id)
+        .where(Sighting.user_id == current_user.id)
         .order_by(Sighting.observed_at.desc())
         .offset(skip)
         .limit(limit)
     )
-    sightings = result.scalars().all()
+    rows = result.all()
     return [
         {
             "id": s.id,
             "local_id": s.local_id,
             "species_id": s.species_id,
+            "species_name": sp.common_name if sp else None,
+            "scientific_name": sp.scientific_name if sp else None,
             "latitude": s.latitude,
             "longitude": s.longitude,
             "observed_at": s.observed_at.isoformat() if s.observed_at else None,
             "photo_url": s.photo_url,
             "notes": s.notes,
         }
-        for s in sightings
+        for s, sp in rows
     ]

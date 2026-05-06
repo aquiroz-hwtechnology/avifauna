@@ -61,3 +61,8 @@ export async function searchSpecies(query: string) {
   const { data } = await apiClient.get('/species/search', { params: { q: query } })
   return data
 }
+
+export async function getSightings(skip = 0, limit = 100) {
+  const { data } = await apiClient.get('/sightings', { params: { skip, limit } })
+  return data
+}
