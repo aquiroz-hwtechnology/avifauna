@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import PhotoUploader from '@/components/identify/PhotoUploader'
 import IdentificationResultCard from '@/components/identify/IdentificationResult'
 import { db } from '@/lib/db'
-import type { IdentificationResult, GeoCoords } from '@avifauna/types'
+import type { IdentificationResult, GeoCoords, AlternativeSpecies } from '@avifauna/types'
 
 interface IdentifyData {
   result: IdentificationResult
@@ -16,17 +16,20 @@ export default function IdentifyPage() {
   const [loading, setLoading] = useState(false)
   const [localName, setLocalName] = useState('')
   const [saved, setSaved] = useState(false)
+  const [corrected, setCorrected] = useState(false)
   const uploaderKey = useRef(0)
+  const lastSightingId = useRef<number | null>(null)
 
   const handleResult = useCallback(async (identifyData: IdentifyData) => {
     setData(identifyData)
     setSaved(false)
     setLocalName('')
+    setCorrected(false)
 
     try {
       const { result: identification, coords } = identifyData
       const tax = identification.taxonomy
-      await db.sightings.add({
+      const id = await db.sightings.add({
         speciesId: identification.species.id,
         speciesName: identification.species.commonName,
         scientificName: identification.species.scientificName,
@@ -43,21 +46,34 @@ export default function IdentifyPage() {
         family: tax?.family,
         genus: tax?.genus,
       })
+      lastSightingId.current = id as number
     } catch {
-      // DB save failed silently - record still shows in UI
+      lastSightingId.current = null
     }
   }, [])
 
+  async function handleSelectAlternative(alt: AlternativeSpecies) {
+    if (!lastSightingId.current) return
+    try {
+      await db.sightings.update(lastSightingId.current, {
+        speciesId: alt.id,
+        speciesName: alt.name || alt.scientificName,
+        scientificName: alt.scientificName,
+        confidence: alt.confidence,
+      })
+      setCorrected(true)
+    } catch {
+      // silent
+    }
+  }
+
   async function handleSaveLocalName() {
-    if (!data || !localName.trim()) return
-    const sightings = await db.sightings
-      .where('speciesId')
-      .equals(data.result.species.id)
-      .reverse()
-      .sortBy('date')
-    if (sightings.length > 0) {
-      await db.sightings.update(sightings[0].id!, { localName: localName.trim() })
+    if (!lastSightingId.current || !localName.trim()) return
+    try {
+      await db.sightings.update(lastSightingId.current, { localName: localName.trim() })
       setSaved(true)
+    } catch {
+      // silent
     }
   }
 
@@ -66,6 +82,8 @@ export default function IdentifyPage() {
     setLoading(false)
     setLocalName('')
     setSaved(false)
+    setCorrected(false)
+    lastSightingId.current = null
     uploaderKey.current += 1
   }
 
@@ -85,13 +103,22 @@ export default function IdentifyPage() {
           <div className="card text-center py-8">
             <div className="animate-pulse-slow text-4xl mb-3">🔬</div>
             <p className="text-gray-500 font-medium">Analizando imagen...</p>
-            <p className="text-xs text-gray-400 mt-1">Consultando base de datos de iNaturalist</p>
+            <p className="text-xs text-gray-400 mt-1">Usando ubicación GPS para mejorar precisión</p>
           </div>
         )}
 
         {data && !loading && (
           <div className="animate-slide-up space-y-4">
-            <IdentificationResultCard result={data.result} />
+            {corrected && (
+              <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-xl text-center font-medium">
+                ✓ Registro actualizado con la especie seleccionada
+              </div>
+            )}
+
+            <IdentificationResultCard
+              result={data.result}
+              onSelectAlternative={handleSelectAlternative}
+            />
 
             <div className="card">
               <label className="block text-sm font-semibold text-gray-700 mb-1">

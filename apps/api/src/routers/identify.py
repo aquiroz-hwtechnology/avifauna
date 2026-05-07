@@ -1,4 +1,5 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from typing import Optional
 import httpx
 import io
 import logging
@@ -12,6 +13,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_SIZE = (1024, 1024)
+
+CONSERVATION_LABELS = {
+    "NE": "No Evaluada",
+    "DD": "Datos Insuficientes",
+    "LC": "Preocupación Menor",
+    "NT": "Casi Amenazada",
+    "VU": "Vulnerable",
+    "EN": "En Peligro",
+    "CR": "En Peligro Crítico",
+    "EW": "Extinta en Estado Silvestre",
+    "EX": "Extinta",
+}
 
 
 def compress_image(image_bytes: bytes) -> bytes:
@@ -43,6 +56,9 @@ def extract_taxonomy(taxon_detail: dict) -> Taxonomy:
         return ""
 
     return Taxonomy(
+        kingdom=find_rank("kingdom"),
+        phylum=find_rank("phylum"),
+        clase=find_rank("class"),
         order=find_rank("order"),
         family=find_rank("family"),
         genus=find_rank("genus"),
@@ -50,24 +66,49 @@ def extract_taxonomy(taxon_detail: dict) -> Taxonomy:
     )
 
 
-async def query_inaturalist(image_bytes: bytes) -> dict:
+def extract_conservation_status(taxon_detail: dict) -> str | None:
+    statuses = taxon_detail.get("conservation_statuses", [])
+    # Prefer IUCN global status
+    for s in statuses:
+        if s.get("authority") == "IUCN Red List" or s.get("iucn"):
+            code = s.get("status", "").upper()
+            return CONSERVATION_LABELS.get(code, code)
+    # Fallback to any status
+    if statuses:
+        code = statuses[0].get("status", "").upper()
+        return CONSERVATION_LABELS.get(code, code)
+    return None
+
+
+async def query_inaturalist(
+    image_bytes: bytes, lat: float | None = None, lng: float | None = None
+) -> dict:
     compressed = compress_image(image_bytes)
     url = f"{settings.INATURALIST_API_URL}/computervision/score_image"
+
+    # Build multipart data with optional geo coords
     files = {"image": ("photo.jpg", compressed, "image/jpeg")}
+    form_data = {}
+    if lat is not None and lng is not None:
+        form_data["lat"] = str(lat)
+        form_data["lng"] = str(lng)
 
     async with httpx.AsyncClient(timeout=30) as client:
-        # Try with token first, fallback to no token if 401
         headers = {}
         if settings.INATURALIST_API_TOKEN:
             headers["Authorization"] = settings.INATURALIST_API_TOKEN
 
-        response = await client.post(url, files=files, headers=headers)
+        response = await client.post(
+            url, files=files, data=form_data, headers=headers
+        )
 
         if response.status_code == 401 and settings.INATURALIST_API_TOKEN:
-            logger.warning("iNaturalist token expired/invalid, retrying without auth")
+            logger.warning(
+                "iNaturalist token expired/invalid, retrying without auth"
+            )
             compressed2 = compress_image(image_bytes)
             files2 = {"image": ("photo.jpg", compressed2, "image/jpeg")}
-            response = await client.post(url, files=files2)
+            response = await client.post(url, files=files2, data=form_data)
 
         response.raise_for_status()
         data = response.json()
@@ -76,6 +117,7 @@ async def query_inaturalist(image_bytes: bytes) -> dict:
         if not results:
             return data
 
+        # Fetch detailed taxonomy for top result
         top_taxon_id = results[0].get("taxon", {}).get("id")
         if top_taxon_id:
             taxon_detail = await fetch_taxon_details(client, top_taxon_id)
@@ -88,7 +130,7 @@ async def query_inaturalist(image_bytes: bytes) -> dict:
 def parse_inaturalist_result(data: dict) -> IdentificationResult:
     results = data.get("results", [])
     if not results:
-        raise HTTPException(status_code=404, detail="No se identificó ningún ave")
+        raise HTTPException(status_code=404, detail="No se identificó ninguna especie")
 
     top = results[0]
     taxon = top.get("taxon", {})
@@ -99,6 +141,15 @@ def parse_inaturalist_result(data: dict) -> IdentificationResult:
     else:
         taxonomy = Taxonomy(species=taxon.get("name", ""))
 
+    conservation_status = None
+    wikipedia_summary = None
+    observations_count = None
+
+    if taxon_detail:
+        conservation_status = extract_conservation_status(taxon_detail)
+        wikipedia_summary = taxon_detail.get("wikipedia_summary")
+        observations_count = taxon_detail.get("observations_count")
+
     species = Species(
         id=str(taxon.get("id", "")),
         commonName=taxon.get("preferred_common_name", taxon.get("name", "")),
@@ -107,23 +158,40 @@ def parse_inaturalist_result(data: dict) -> IdentificationResult:
         imageUrl=taxon.get("default_photo", {}).get("medium_url"),
     )
 
+    # Build alternatives with images
+    alternatives = []
+    for r in results[1:6]:
+        alt_taxon = r.get("taxon", {})
+        alt_photo = alt_taxon.get("default_photo", {})
+        alternatives.append(
+            {
+                "id": str(alt_taxon.get("id", "")),
+                "name": alt_taxon.get(
+                    "preferred_common_name", alt_taxon.get("name", "")
+                ),
+                "scientificName": alt_taxon.get("name", ""),
+                "confidence": r.get("combined_score", 0) / 100,
+                "imageUrl": alt_photo.get("square_url") if alt_photo else None,
+            }
+        )
+
     return IdentificationResult(
         species=species,
         confidence=top.get("combined_score", 0) / 100,
         taxonomy=taxonomy,
-        alternatives=[
-            {
-                "name": r.get("taxon", {}).get("preferred_common_name", ""),
-                "scientificName": r.get("taxon", {}).get("name", ""),
-                "confidence": r.get("combined_score", 0) / 100,
-            }
-            for r in results[1:4]
-        ],
+        conservationStatus=conservation_status,
+        observationsCount=observations_count,
+        wikipediaSummary=wikipedia_summary,
+        alternatives=alternatives,
     )
 
 
 @router.post("", response_model=IdentificationResult)
-async def identify_bird(image: UploadFile = File(...)):
+async def identify_bird(
+    image: UploadFile = File(...),
+    lat: Optional[float] = Form(None),
+    lng: Optional[float] = Form(None),
+):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
 
@@ -137,7 +205,7 @@ async def identify_bird(image: UploadFile = File(...)):
         except Exception as e:
             logger.warning("Failed to upload photo to blob storage: %s", e)
 
-    data = await query_inaturalist(image_bytes)
+    data = await query_inaturalist(image_bytes, lat=lat, lng=lng)
     result = parse_inaturalist_result(data)
     result.photoUrl = photo_url
     return result

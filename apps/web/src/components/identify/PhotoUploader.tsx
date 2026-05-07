@@ -26,15 +26,16 @@ export default function PhotoUploader({ onResult, onLoading }: Props) {
     onLoading(true)
 
     try {
-      const [result, coords] = await Promise.allSettled([
-        identifyBird(file),
-        getCurrentPosition(),
-      ])
+      // Get GPS first (fast, ~1s) to improve identification accuracy
+      let geoCoords: import('@avifauna/types').GeoCoords | null = null
+      try {
+        geoCoords = await getCurrentPosition()
+      } catch {
+        // GPS not available, continue without it
+      }
 
-      const identification = result.status === 'fulfilled' ? result.value : null
+      const identification = await identifyBird(file, geoCoords?.lat, geoCoords?.lng)
       if (!identification) throw new Error('No se pudo identificar la especie')
-
-      const geoCoords = coords.status === 'fulfilled' ? coords.value : null
 
       onResult({ result: identification, coords: geoCoords })
     } catch (err) {

@@ -20,13 +20,24 @@ class Species(BaseModel):
     imageUrl: str | None = None
 
 
+class AlternativeSpecies(BaseModel):
+    id: str = ""
+    name: str
+    scientificName: str = ""
+    confidence: float = 0.0
+    imageUrl: str | None = None
+
+
 class IdentificationResult(BaseModel):
     species: Species
     confidence: float
     taxonomy: Taxonomy
     distribution: str | None = None
     photoUrl: str | None = None
-    alternatives: list[dict] = []
+    conservationStatus: str | None = None
+    observationsCount: int | None = None
+    wikipediaSummary: str | None = None
+    alternatives: list[AlternativeSpecies] = []
 
 
 class SightingIn(BaseModel):

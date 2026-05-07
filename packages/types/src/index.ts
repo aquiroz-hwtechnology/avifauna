@@ -17,17 +17,24 @@ export interface Species {
   imageUrl?: string
 }
 
+export interface AlternativeSpecies {
+  id: string
+  name: string
+  scientificName: string
+  confidence: number
+  imageUrl?: string | null
+}
+
 export interface IdentificationResult {
   species: Species
   confidence: number
   taxonomy: Taxonomy
   distribution?: string
   photoUrl?: string | null
-  alternatives: Array<{
-    name: string
-    scientificName: string
-    confidence: number
-  }>
+  conservationStatus?: string | null
+  observationsCount?: number | null
+  wikipediaSummary?: string | null
+  alternatives: AlternativeSpecies[]
 }
 
 export interface Sighting {

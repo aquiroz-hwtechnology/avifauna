@@ -15,9 +15,13 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-export async function identifyBird(imageFile: File) {
+export async function identifyBird(imageFile: File, lat?: number | null, lng?: number | null) {
   const formData = new FormData()
   formData.append('image', imageFile)
+  if (lat != null && lng != null) {
+    formData.append('lat', String(lat))
+    formData.append('lng', String(lng))
+  }
   const { data } = await apiClient.post('/identify', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
