@@ -52,15 +52,23 @@ def extract_taxonomy(taxon_detail: dict) -> Taxonomy:
 
 async def query_inaturalist(image_bytes: bytes) -> dict:
     compressed = compress_image(image_bytes)
-    headers = {}
-    if settings.INATURALIST_API_TOKEN:
-        headers["Authorization"] = settings.INATURALIST_API_TOKEN
+    url = f"{settings.INATURALIST_API_URL}/computervision/score_image"
+    files = {"image": ("photo.jpg", compressed, "image/jpeg")}
+
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            f"{settings.INATURALIST_API_URL}/computervision/score_image",
-            files={"image": ("photo.jpg", compressed, "image/jpeg")},
-            headers=headers,
-        )
+        # Try with token first, fallback to no token if 401
+        headers = {}
+        if settings.INATURALIST_API_TOKEN:
+            headers["Authorization"] = settings.INATURALIST_API_TOKEN
+
+        response = await client.post(url, files=files, headers=headers)
+
+        if response.status_code == 401 and settings.INATURALIST_API_TOKEN:
+            logger.warning("iNaturalist token expired/invalid, retrying without auth")
+            compressed2 = compress_image(image_bytes)
+            files2 = {"image": ("photo.jpg", compressed2, "image/jpeg")}
+            response = await client.post(url, files=files2)
+
         response.raise_for_status()
         data = response.json()
 
